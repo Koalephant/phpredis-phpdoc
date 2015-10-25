@@ -4,9 +4,12 @@
  * @author Max Kamashev <max.kamashev@gmail.com>
  * @link https://github.com/ukko/phpredis-phpdoc
  *
- * @method echo string $string Sends a string to Redis, which replies with the same string
+ * @method echo ( $string )
+ *  Sends a string to Redis, which replies with the same string
+ *  @param string $string Sends a string to Redis, which replies with the same string
+ *  @return string
  *
- * @method  eval( $script, $args = array(), $numKeys = 0 )
+ * @method eval( $script, $args = array(), $numKeys = 0 )
  *  Evaluate a LUA script serverside
  *  @param  string  $script
  *  @param  array   $args
@@ -132,24 +135,44 @@ class Redis
      * @return bool                 TRUE on success, FALSE on error.
      * @example
      * <pre>
-     * $redis->connect('127.0.0.1', 6379);
-     * $redis->connect('127.0.0.1');            // port 6379 by default
-     * $redis->connect('127.0.0.1', 6379, 2.5); // 2.5 sec timeout.
-     * $redis->connect('/tmp/redis.sock');      // unix domain socket.
+     * $redis->pconnect('127.0.0.1', 6379);
+     * $redis->pconnect('127.0.0.1');            // port 6379 by default
+     * $redis->pconnect('127.0.0.1', 6379, 2.5); // 2.5 sec timeout.
+     * $redis->pconnect('/tmp/redis.sock');      // unix domain socket.
      * </pre>
      */
     public function pconnect( $host, $port = 6379, $timeout = 0.0 ) {}
 
     /**
-     * @see pconnect()
-     * @param string    $host
-     * @param int       $port
-     * @param float     $timeout
+     * Connects to a Redis instance or reuse a connection already established with pconnect/popen.
+     *
+     * The connection will not be closed on close or end of request until the php process ends.
+     * So be patient on to many open FD's (specially on redis server side) when using persistent connections on
+     * many servers connecting to one redis server.
+     *
+     * Also more than one persistent connection can be made identified by either host + port + timeout
+     * or unix socket + timeout.
+     *
+     * This feature is not available in threaded versions. pconnect and popen then working like their non persistent
+     * equivalents.
+     *
+     * @param string    $host       can be a host, or the path to a unix domain socket
+     * @param int       $port       optional
+     * @param float     $timeout    value in seconds (optional, default is 0 meaning unlimited)
+     * @return bool                 TRUE on success, FALSE on error.
+     * @example
+     * <pre>
+     * $redis->pconnect('127.0.0.1', 6379);
+     * $redis->pconnect('127.0.0.1');            // port 6379 by default
+     * $redis->pconnect('127.0.0.1', 6379, 2.5); // 2.5 sec timeout.
+     * $redis->pconnect('/tmp/redis.sock');      // unix domain socket.
+     * </pre>
      */
     public function popen( $host, $port = 6379, $timeout = 0.0 ) {}
 
     /**
      * Disconnects from the Redis instance, except when pconnect is used.
+     * @return  bool
      */
     public function close( ) {}
 
@@ -192,7 +215,8 @@ class Redis
      * Get the value related to the specified key
      *
      * @param   string  $key
-     * @return  string|bool: If key didn't exist, FALSE is returned. Otherwise, the value related to this key is returned.
+     * @return  mixed|bool: If key didn't exist, FALSE is returned. Otherwise, the value related to this key is returned.
+     * If Redis::OPT_SERIALIZER has been set return value will depend on the data stored
      * @link    http://redis.io/commands/get
      * @example $redis->get('key');
      */
@@ -299,12 +323,14 @@ class Redis
     /**
      * @see multi()
      * @link    http://redis.io/commands/exec
+     * @return bool[] the results of each operation
      */
     public function exec( ) {}
 
     /**
      * @see multi()
      * @link    http://redis.io/commands/discard
+     * @return bool
      */
     public function discard( ) {}
 
@@ -312,7 +338,7 @@ class Redis
      * Watches a key for modifications by another client. If the key is modified between WATCH and EXEC,
      * the MULTI/EXEC transaction will fail (return FALSE). unwatch cancels all the watching of all keys by this client.
      * @param string | array $key: a list of keys
-     * @return void
+     * @return bool
      * @link    http://redis.io/commands/watch
      * @example
      * <pre>
@@ -328,6 +354,7 @@ class Redis
 
     /**
      * @see watch()
+     * @return bool
      * @link    http://redis.io/commands/unwatch
      */
     public function unwatch( ) {}
@@ -369,7 +396,7 @@ class Redis
      * @param   array           $patterns   The number of elements removed from the set.
      * @param   string|array    $callback   Either a string or an array with an object and method.
      *                          The callback will get four arguments ($redis, $pattern, $channel, $message)
-     * @param   mixed           Any non-null return value in the callback will be returned to the caller.
+     * @return  mixed           Any non-null return value in the callback will be returned to the caller.
      * @link    http://redis.io/commands/psubscribe
      * @example
      * <pre>
@@ -760,6 +787,8 @@ class Redis
     /**
      * @see     lLen()
      * @param   string    $key
+     * @return  int     The size of the list identified by Key exists.
+     * bool FALSE if the data type identified by Key is not list
      * @link    http://redis.io/commands/llen
      */
     public function lSize( $key ) {}
@@ -790,6 +819,7 @@ class Redis
      * @see lIndex()
      * @param   string    $key
      * @param   int       $index
+     * @return String the element at this index
      * @link    http://redis.io/commands/lindex
      */
     public function lGet( $key, $index ) {}
@@ -842,6 +872,7 @@ class Redis
      * @param string    $key
      * @param int       $start
      * @param int       $end
+     * @return  array containing the values in specified range.
      */
     public function lGetRange( $key, $start, $end ) {}
 
@@ -872,6 +903,7 @@ class Redis
      * @param string    $key
      * @param int       $start
      * @param int       $stop
+     * @return array    Bool return FALSE if the key identify a non-list value.
      */
     public function listTrim( $key, $start, $stop ) {}
 
@@ -908,6 +940,7 @@ class Redis
      * @param string    $key
      * @param string    $value
      * @param int       $count
+     * @return  int     the number of elements to remove
      */
     public function lRemove( $key, $value, $count ) {}
 
@@ -992,6 +1025,7 @@ class Redis
      * @param   string  $member1
      * @param   string  $member2
      * @param   string  $memberN
+     * @return  int     The number of elements removed from the set.
      */
     public function sRemove( $key, $member1, $member2 = null, $memberN = null ) {}
 
@@ -1043,6 +1077,7 @@ class Redis
      * @link    http://redis.io/commands/sismember
      * @param   string  $key
      * @param   string  $value
+     * @return  bool    TRUE if value is a member of the set at key key, FALSE otherwise.
      */
     public function sContains( $key, $value ) {}
 
@@ -1355,6 +1390,7 @@ class Redis
     /**
      * @see sMembers()
      * @param   string  $key
+     * @return  array   An array of elements, the contents of the set.
      * @link    http://redis.io/commands/smembers
      */
     public function sGetMembers( $key ) {}
@@ -1466,6 +1502,7 @@ class Redis
      * @link    http://redis.io/commands/rename
      * @param   string  $srcKey
      * @param   string  $dstKey
+     * @return  bool:   TRUE in case of success, FALSE in case of failure.
      */
     public function renameKey( $srcKey, $dstKey ) {}
 
@@ -1494,7 +1531,7 @@ class Redis
      *
      * @param   string  $key    The key that will disappear.
      * @param   int     $ttl    The key's remaining Time To Live, in seconds.
-     * @return  bool:   TRUE in case of success, FALSE in case of failure.
+     * @return  bool   TRUE in case of success, FALSE in case of failure.
      * @link    http://redis.io/commands/expire
      * @example
      * <pre>
@@ -1511,7 +1548,7 @@ class Redis
      *
      * @param   string  $key    The key that will disappear.
      * @param   int     $ttl   The key's remaining Time To Live, in milliseconds.
-     * @return  bool:   TRUE in case of success, FALSE in case of failure.
+     * @return  bool   TRUE in case of success, FALSE in case of failure.
      * @link    http://redis.io/commands/pexpire
      * @example
      * <pre>
@@ -1527,6 +1564,7 @@ class Redis
      * @see expire()
      * @param   string  $key
      * @param   int     $ttl
+     * @return bool TRUE in case of success, FALSE in case of failure.
      * @link    http://redis.io/commands/expire
      */
     public function setTimeout( $key, $ttl ) {}
@@ -1570,7 +1608,7 @@ class Redis
      * Returns the keys that match a certain pattern.
      *
      * @param   string  $pattern pattern, using '*' as a wildcard.
-     * @return  array   of STRING: The keys that match a certain pattern.
+     * @return string[] The keys that match a certain pattern
      * @link    http://redis.io/commands/keys
      * @example
      * <pre>
@@ -1583,6 +1621,7 @@ class Redis
     /**
      * @see keys()
      * @param   string  $pattern
+     * @return string[] The keys that match a certain pattern
      * @link    http://redis.io/commands/keys
      */
     public function getKeys( $pattern ) {}
@@ -1759,6 +1798,7 @@ class Redis
      * @param   string  $key
      * @param   int     $start
      * @param   int     $end
+     * @return  string: the substring
      */
     public function substr( $key, $start, $end ) {}
 
@@ -2404,6 +2444,7 @@ class Redis
      * @param string    $key
      * @param float     $start
      * @param float     $end
+     * @return  int             The number of values deleted from the sorted set
      */
     public function zDeleteRangeByScore( $key, $start, $end ) {}
 
@@ -2431,6 +2472,7 @@ class Redis
      * @param   string  $key
      * @param   int     $start
      * @param   int     $end
+     * @return  int     The number of values deleted from the sorted set
      * @link    http://redis.io/commands/zremrangebyscore
      */
     public function zDeleteRangeByRank( $key, $start, $end ) {}
@@ -2454,6 +2496,7 @@ class Redis
     /**
      * @see zCard()
      * @param string $key
+     * @return  int     the set's cardinality
      */
     public function zSize( $key ) {}
 
@@ -2978,9 +3021,10 @@ class Redis
 
     /**
      * @see evalSha()
-     * @param string $scriptSha
-     * @param array  $args
-     * @param int    $numKeys
+     * @param   string  $scriptSha
+     * @param   array   $args
+     * @param   int     $numKeys
+     * @return  mixed   @see eval()
      */
     public function evaluateSha( $scriptSha, $args = array(), $numKeys = 0 ) {}
 
