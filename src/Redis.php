@@ -2359,9 +2359,9 @@ class Redis
      * @param   int     $start
      * @param   int     $end
      * @param   array   $options
-	 *
-	 * @return 	array
-     */
+     *
+     * @return 	array
+     */git 
     public function zRevRangeByScore( $key, $start, $end, array $options = array() ) {}
 
     /**
